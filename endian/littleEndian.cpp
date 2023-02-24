@@ -1,5 +1,19 @@
-
-
+/**
+ *  LITTLE ENDIAN
+ *  Author: Yelyzaveta (Leeza) Andryushchenko
+ * 
+ *  DESCRIPTION:
+ *  A set of 2 function, both of which convert little endian
+ *  to big endian notation. Short version (ntohs) works with
+ *  unsigned shorts and long (ntohl) with unsigned ints. Overall,
+ *  the functions perform the same operation as ntohl/ntohs from
+ *  <arpa/inet.h> library (for network hosts)
+ *  RUNTIME:
+ *  O(1) as bitwise operations are constant runtime
+ * 
+ *  TESTING: Tests.cpp
+ *  Look for comments in the file to find unit tests for this function
+*/
 
 
 

@@ -10,11 +10,15 @@
 */
 
 
-#include "gtest/gtest.h"
-#include <arpa/inet.h>  // testing little endian implementation
-#include <thread>       // better test runtime performance
+#include "gtest/gtest.h"    // google tests
+#include <arpa/inet.h>      // testing little endian implementation
+#include <thread>           // better test runtime performance
+#include <bits/stdc++.h>    // time parse testing
+
+// tested files
 #include "./zeros/ZerosToTheFront.cpp"
 #include "./endian/littleEndian.cpp"
+#include "./timeParse/timeParse.cpp"
 
 using namespace std;
 
@@ -164,6 +168,102 @@ TEST(littleEndianLong, stressTesting) {
     }
     // wait for every thread to finish
     for(int i = 0; i < 257; t_arr[i++].join());
+}
+
+
+/*******************************************************************************/
+//                              TIME PARSE TESTING
+/*******************************************************************************/
+
+TEST(getHMSTest, currentTime) {
+    // get current timestamp
+    time_t curTime = time(0);
+    int hour, min, sec;
+    getHMS(curTime, &hour, &min, &sec);
+
+    // find current hour/minute/second
+    tm* cur = localtime(&curTime);
+    // cout << "Actual parsing is:  " << cur->tm_hour << "-" << cur->tm_min << "-" << cur->tm_sec << endl;
+    ASSERT_EQ(sec, cur->tm_sec);
+    ASSERT_EQ(min, cur->tm_min);
+    ASSERT_EQ(hour, (cur->tm_hour + 6) % 24);   // local time defaults to chicago timezone, convert to UTC
+}
+
+TEST(getHMSTest, stressTesting) {
+    // try every possible second within a 24-hour span:
+    for(int i = 0; i < 86400; i++) {    // NOTE: 86400 -> 60*60*24
+        time_t t = i;
+        int hour, min, sec;
+        // get time parse
+        getHMS(t, &hour, &min, &sec);
+
+        // get correct & compare
+        tm* cur = localtime(&t);
+        ASSERT_EQ(sec, cur->tm_sec);
+        ASSERT_EQ(min, cur->tm_min);
+        ASSERT_EQ(hour, (cur->tm_hour + 6) % 24);
+    }
+}
+
+
+TEST(getDayOfWeekTest, currentTime) {
+    time_t curTime = time(0);
+    int day = getDayOfWeek(curTime);
+    tm* cur = localtime(&curTime);
+    
+    ASSERT_EQ(day, cur->tm_wday);
+}
+
+TEST(getDayOfWeekTest, stressTesting) {
+    // attempt to run the test for days within current given year:
+    time_t start = time(0);
+    time_t end = start + 31536000;                  // 31,536,000 -> seconds in a year
+    for(time_t t = start; t < end; t += 86400 ) {   // 86400 -> seconds in a day
+        tm* cur = localtime(&t);
+        ASSERT_EQ(getDayOfWeek(t), cur->tm_wday);
+    }
+}
+
+TEST(getTimeTest, currentTime) {
+    time_t curTime = time(0);
+    tm* cur = localtime(&curTime);
+    time_t result = getTime(cur->tm_mon, cur->tm_mday, 2023, cur->tm_hour + 6, cur->tm_min, cur->tm_sec);
+    ASSERT_EQ(curTime, result);    // UTC is 6 hours ahead - hour + 6 in params
+}
+
+
+time_t get_start_date(int day) {
+    time_t cur = time(0);
+    tm* t = localtime(&cur);
+    // restructure current time to be the given day:
+    t->tm_yday = day;
+    // construct time object again:
+    return mktime(t);
+}
+
+void helper_time(int id) {
+    time_t start = get_start_date(id);
+    // test for the given time frame of the year:
+    for(time_t i = start; i < start + 86400; i++) {
+        tm* cur = localtime(&i);
+        time_t result = getTime(cur->tm_mon, cur->tm_mday, 2023, cur->tm_hour + 6, cur->tm_min, cur->tm_sec);
+        ASSERT_EQ(i, result);
+        return;
+    }
+}
+
+
+TEST(getTimeTest, stressTesting) {
+    // try every possible second within this year
+    // split the work between 365 threads, each runs 1 day of the year:
+    thread t_array[365];
+    for(int i = 0; i<365; i++) {
+        t_array[i] = thread(helper_time, i);
+    }
+    // wait for each thread to finish
+    for(int i =0; i < 365; i++) {
+        t_array[i].join();
+    }
 }
 
 
