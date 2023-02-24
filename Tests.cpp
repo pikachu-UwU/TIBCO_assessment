@@ -11,6 +11,8 @@
 
 
 #include "gtest/gtest.h"
+#include <arpa/inet.h>  // testing little endian implementation
+#include <thread>       // better test runtime performance
 #include "./zeros/ZerosToTheFront.cpp"
 #include "./endian/littleEndian.cpp"
 
@@ -98,6 +100,71 @@ TEST(zerosToTheFrontTest, edgeCases) {
 //                        LITTLE ENDIAN CONVERSION TESTING
 /*******************************************************************************/
 
+TEST(littleEndianShort, noEdgeBytes) {
+    unsigned short test = 28;           // 00000000 00011100
+    ASSERT_EQ(my_ntohs(test), 7168);    // 00011100 00000000
+
+    test = 22642;                       // 01011000 01110010
+    ASSERT_EQ(my_ntohs(test), 29272);   // 01110010 01011000
+
+    test = 0;                           // 00000000 00000000
+    ASSERT_EQ(my_ntohs(test), 0);       // 00000000 00000000
+
+    test = 21760;                       // 01010101 00000000
+    ASSERT_EQ(my_ntohs(test), 85);      // 00000000 01010101
+}
+
+TEST(littleEndianShort, edgeBytes) {
+    unsigned short test = 38317;        // 10010101 10101101
+    ASSERT_EQ(my_ntohs(test), 44437);   // 10101101 10010101
+
+    test = 64257;                       // 11111011 00000001
+    ASSERT_EQ(my_ntohs(test), 507);     // 00000001 11111011
+
+    test = 65535;                       // 11111111 11111111
+    ASSERT_EQ(my_ntohs(test), 65535);   // 11111111 11111111
+}
+
+TEST(littleEndianShort, stressTesting) {
+    // using original htons function to test the output:
+
+    // last byte combinations
+    for(unsigned short i = 0; i < 255; i++) {
+        ASSERT_EQ(my_ntohs(i), ntohs(i));
+    }
+
+    // first byte combinations
+    unsigned short i = 256;
+    for(unsigned short i = 256; i <= 65535 && i != 0; i += 256) {
+        ASSERT_EQ(my_ntohs(i), ntohs(i));
+    }
+
+    // every possible value:
+    for(int i = 257; i <= 65535 && i != 0; i++) {
+        ASSERT_EQ(my_ntohs(i), ntohs(i));
+    }
+}
+
+
+// HELPER FUNCTION - used by test below to run stress testing
+// on different threads for faster results  286331153
+void thread_separation(unsigned int id) {
+    int bound = id*16711935 + 16711935;
+    for(unsigned int i = id*16711935; i <= 16711935 && i < bound; i++) {
+        ASSERT_EQ(my_ntohl(i), ntohl(i));
+    }
+}
+
+
+TEST(littleEndianLong, stressTesting) {
+    // separate testing into different threads for better performance
+    std::thread t_arr[257];
+    for(int i = 0; i < 257; i++) {
+        t_arr[i] = std::thread(thread_separation, i);
+    }
+    // wait for every thread to finish
+    for(int i = 0; i < 257; t_arr[i++].join());
+}
 
 
 /*******************************************************************************/
